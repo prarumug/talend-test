@@ -1,0 +1,8 @@
+{
+    "name": "Vertex Inc Workflow",
+    "description": "Vertex Inc charts lint and checks workflow template.",
+    "iconName": "example-icon",
+    "categories": [
+        "Java"
+    ]
+}

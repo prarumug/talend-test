@@ -1,0 +1,136 @@
+name: PR-Checks
+on:
+  pull_request:
+    branches: [ $default-branch ]
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run unit tests
+        run: bash scripts/ci-check.sh "mvn clean test jacoco:check"
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  integration-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run integration tests
+        run: bash scripts/ci-check.sh "mvn clean verify -Dskip.unit.tests=true -Dmicronaut.environments=test,github"
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  checkstyle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run checkstyle
+        run: bash scripts/ci-check.sh "mvn clean checkstyle:check"
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  validate-javadoc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Validate Javadoc
+        run: bash scripts/ci-check.sh "mvn clean javadoc:javadoc javadoc:test-javadoc"
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  pmd:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run PMD
+        run: bash scripts/ci-check.sh "mvn clean package pmd:pmd pmd:check pmd:cpd pmd:cpd-check -DskipTests"
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  spotbugs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run Spotbugs
+        run: bash scripts/ci-check.sh "mvn clean package spotbugs:check -DskipTests"
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  pom-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run POM lint
+        run: bash scripts/ci-check.sh "mvn clean lint:check"
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+  owasp-denendecy-vulnerabilities-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run OWASP dependency vulnerabilities check
+        run: bash scripts/ci-check.sh "mvn clean dependency-check:check"
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  enforcer-denendecy-conflicts-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run enforcer dependency conflicts check
+        run: bash scripts/ci-check.sh "mvn clean package enforcer:enforce -DskipTests"
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  checkmarx-security-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Checkmarx CxFlow Action
+        uses: checkmarx-ts/checkmarx-cxflow-github-action@v1.1
+        with:
+          project: ${{ ADD Project Name }} # ADD Project Name
+          team: ${{ ADD team Name }} # ADD Project Name
+          checkmarx_url: ${{ secrets.CHECKMARX_URL }}
+          checkmarx_username: ${{ secrets.CHECKMARX_USERNAME }}
+          checkmarx_password: ${{ secrets.CHECKMARX_PASSWORD }}
+          checkmarx_client_secret: ${{ secrets.cHECKMARX_CLIENT_SECRET }}
+          break_build: false
+          incremental: false
+          scanners: sast
+          # For Jira integration
+          params: --namespace=${{ github.repository_owner }} --repo-name=${{ github.event.repository.name }} --branch=${{ github.ref }} --exclude-folders=test_automation

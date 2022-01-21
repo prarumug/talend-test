@@ -1,0 +1,50 @@
+name: Dev Deployment Workflow
+on:
+  push:
+    branches: [ $default-branch ]
+
+jobs:
+  setup:
+    runs-on: [self-hosted, Standard]
+    steps:
+      - name: Runner workspace path
+        run: |
+          echo "Cleaning up previous run"
+          sudo rm -rf "${{ github.workspace }}"
+
+  artifactoryUpload:
+    needs: setup
+    name: Upload Trigger
+    runs-on: [self-hosted, Standard]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Bump version and push tag
+        id: bump_version
+        if: ${{ !env.ACT }}
+        uses: anothrNick/github-tag-action@1.26.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
+          VERBOSE: true
+          DEFAULT_BUMP: patch
+          RELEASE_BRANCHES: sha/artifactory-jar
+
+      - name: Print version
+        run: |
+          echo ${{steps.bump_version.outputs.new_tag}}
+      
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v1
+        env:
+          JF_ARTIFACTORY_SERVER: ${{ secrets.JF_RT_ARTIFACTORY_CLOUD }}
+      
+      - name: Run JFrog CLI
+        env:
+          VERSION: latest
+        run: |
+          jfrog rt ping
+          jfrog rt bce
+          bash ./scripts/${{ Add project name }}-docker-deployment.sh # ADD Project Name

@@ -1,0 +1,677 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.vertexinc</groupId>
+    <artifactId>ci-cd-pom</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <scm>
+        <connection>scm:git:ssh://git@github.com:vertexinc/.github.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com:vertexinc/.github.git</developerConnection>
+        <url>https://github.com/vertexinc/.github</url>
+    </scm>
+
+    <properties>
+
+        <!-- Separate options to skip unit and integration tests -->
+        <skipTests>false</skipTests>
+        <skip.unit.tests>${skipTests}</skip.unit.tests>
+        <skip.integration.tests>${skipTests}</skip.integration.tests>
+
+        <!-- configuration properties for quality checks -->
+        <unit.test.coverage.minimum>80%</unit.test.coverage.minimum>
+        <checkstyle.config>config/checkstyle_google_checks-extended.xml</checkstyle.config>
+        <spotbugs.exclusions>config/spotbugs-exclusions.xml</spotbugs.exclusions>
+        <pmd.config>config/pmd-ruleset.xml</pmd.config>
+        <pmd.cpd.duplicate.threshold.tokens>20</pmd.cpd.duplicate.threshold.tokens>
+        <pmd.exclusions>config/pmd-exclusions.properties</pmd.exclusions>
+
+        <jdk.version>11</jdk.version>
+        <release.version>11</release.version>
+
+
+        <!-- Versions used for maven plugins and their dependencies used for code quality checks -->
+        <jacoco-maven-plugin.version>0.8.7</jacoco-maven-plugin.version>
+        <maven-checkstyle-plugin.version>3.1.2</maven-checkstyle-plugin.version>
+        <checkstyle.version>8.42</checkstyle.version>
+        <spotbugs-maven-plugin.version>4.2.3</spotbugs-maven-plugin.version>
+        <findsecbugs-plugin.version>1.11.0</findsecbugs-plugin.version>
+        <maven-pmd-plugin.version>3.14.0</maven-pmd-plugin.version>
+        <lint-maven-plugin.version>0.0.11</lint-maven-plugin.version>
+        <dependency-check-maven.version>6.1.6</dependency-check-maven.version>
+        <maven-enforcer-plugin.version>3.0.0-M3</maven-enforcer-plugin.version>
+        <extra-enforcer-rules.version>1.3</extra-enforcer-rules.version>
+        <sonar-maven-plugin.version>3.7.0.1746</sonar-maven-plugin.version>
+
+        <!-- Versions for maven plugins used in default and common lifecycle mappings -->
+        <maven-clean-plugin.version>3.1.0</maven-clean-plugin.version>
+        <maven-resources-plugin.version>3.2.0</maven-resources-plugin.version>
+        <maven-source-plugin.version>3.2.1</maven-source-plugin.version>
+        <maven-jar-plugin.version>3.2.0</maven-jar-plugin.version>
+        <maven-jxr-plugin.version>3.1.1</maven-jxr-plugin.version>
+        <git-commit-id-plugin.version>4.0.4</git-commit-id-plugin.version>
+        <taglist-maven-plugin.version>2.4</taglist-maven-plugin.version>
+        <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
+        <maven-install-plugin.version>3.0.0-M1</maven-install-plugin.version>
+        <maven-deploy-plugin.version>3.0.0-M1</maven-deploy-plugin.version>
+        <maven-release-plugin.version>3.0.0-M4</maven-release-plugin.version>
+        <maven-dependency-plugin.version>3.2.0</maven-dependency-plugin.version>
+        <maven-surefire-plugin.version>3.0.0-M5</maven-surefire-plugin.version>
+        <maven-surefire-report-plugin.version>3.0.0-M5</maven-surefire-report-plugin.version>
+        <maven-failsafe-plugin.version>3.0.0-M5</maven-failsafe-plugin.version>
+        <maven-site-plugin.version>3.9.1</maven-site-plugin.version>
+        <maven-project-info-reports-plugin.version>3.1.2</maven-project-info-reports-plugin.version>
+        <junit.jupiter.version>5.4.0</junit.jupiter.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>${basedir}/src/main/resources</directory>
+                <targetPath>${project.build.outputDirectory}</targetPath>
+            </resource>
+            <resource>
+                <directory>${project.basedir}/database</directory>
+                <targetPath>${project.build.outputDirectory}/database</targetPath>
+            </resource>
+        </resources>
+
+        <pluginManagement>
+            <plugins>
+                <!-- Plugins used for quality checks-->
+                <!-- Complex configuration is here in order to execute checks from github actions individually -->
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco-maven-plugin.version}</version>
+                    <configuration>
+                        <rules>
+                            <rule>
+                                <element>CLASS</element>
+                                <excludes>
+                                    <!-- Application class is excluded since it cannot be unit-tested -->
+                                    <exclude>${exec.mainClass}</exclude>
+                                    <!-- H2 console launcher class is excluded since it cannot be unit-tested -->
+                                    <!-- Furthermore, this file mustn't be running in PROD environment-->
+                                    <exclude>com.vertexinc.iam.startup.H2ConsoleLauncher</exclude>
+                                    <!-- Testing Slf4j logging requires disabling logging for tests and it's tricky -->
+                                    <exclude>com.vertexinc.iam.logging.*</exclude>
+                                </excludes>
+                                <limits>
+                                    <!-- Requirements are relaxed from 90% to 80% -->
+                                    <!-- This is done because integration test coverage is missing-->
+                                    <limit>
+                                        <counter>INSTRUCTION</counter>
+                                        <value>COVEREDRATIO</value>
+                                        <minimum>${unit.test.coverage.minimum}</minimum>
+                                    </limit>
+                                    <limit>
+                                        <counter>LINE</counter>
+                                        <value>COVEREDRATIO</value>
+                                        <minimum>${unit.test.coverage.minimum}</minimum>
+                                    </limit>
+                                    <limit>
+                                        <counter>BRANCH</counter>
+                                        <value>COVEREDRATIO</value>
+                                        <minimum>${unit.test.coverage.minimum}</minimum>
+                                    </limit>
+                                </limits>
+                            </rule>
+                        </rules>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>jacoco-unit-test-coverage-validation</id>
+                            <configuration>
+                                <skip>${skip.unit.tests}</skip>
+                            </configuration>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <version>${maven-checkstyle-plugin.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>com.puppycrawl.tools</groupId>
+                            <artifactId>checkstyle</artifactId>
+                            <version>${checkstyle.version}</version>
+                        </dependency>
+                    </dependencies>
+                    <configuration>
+                        <configLocation>${checkstyle.config}</configLocation>
+                        <failOnViolation>true</failOnViolation>
+                        <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>checkstyle-validation</id>
+                            <phase>validate</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>com.github.spotbugs</groupId>
+                    <artifactId>spotbugs-maven-plugin</artifactId>
+                    <version>${spotbugs-maven-plugin.version}</version>
+                    <configuration>
+                        <plugins>
+                            <!-- Static code analysis for security vulnerabilities -->
+                            <!-- See https://find-sec-bugs.github.io/ for the details -->
+                            <plugin>
+                                <groupId>com.h3xstream.findsecbugs</groupId>
+                                <artifactId>findsecbugs-plugin</artifactId>
+                                <version>${findsecbugs-plugin.version}</version>
+                            </plugin>
+                        </plugins>
+                        <!-- See https://spotbugs.readthedocs.io/en/stable/effort.html for details -->
+                        <effort>Max</effort>
+                        <!-- Makes spotbugs report issues with low severity and fail on a violation -->
+                        <threshold>Low</threshold>
+                        <!-- Violations within test code lead to quite similar problems as in the main code -->
+                        <includeTests>true</includeTests>
+                        <!-- Exclusions file -->
+                        <excludeFilterFile>${spotbugs.exclusions}</excludeFilterFile>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>spotbugs-validation</id>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-pmd-plugin</artifactId>
+                    <version>${maven-pmd-plugin.version}</version>
+                    <configuration>
+                        <printFailingErrors>true</printFailingErrors>
+                        <!-- Violations within test code lead to quite similar problems as in the main code -->
+                        <includeTests>true</includeTests>
+
+                        <!-- A lot of useful rules are not enabled by default -->
+                        <!-- See http://maven.apache.org/plugins/maven-pmd-plugin/pmd-mojo.html#rulesets -->
+                        <!-- Unfortunately rulesets cannot be configured per execution goal, hence it is put here -->
+                        <rulesets>
+                            <ruleset>${pmd.config}</ruleset>
+                        </rulesets>
+                        <excludeFromFailureFile>${pmd.exclusions}</excludeFromFailureFile>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>pmd-validation</id>
+                            <goals>
+                                <!-- 'check' goal is not configurable since it only checks the report -->
+                                <goal>pmd</goal>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <!-- CPD is a copy-paste detector, a tool to find duplicate withing the code -->
+                            <id>pmd-cpd-validation</id>
+                            <configuration>
+                                <!-- CPD checks for 100 lines, it is really a lot, 20 is more motivating -->
+                                <minimumTokens>${pmd.cpd.duplicate.threshold.tokens}</minimumTokens>
+                                <!-- A change in the name, value or an annotation isn't a reasons to copy-->
+                                <ignoreAnnotations>true</ignoreAnnotations>
+                                <ignoreIdentifiers>true</ignoreIdentifiers>
+                                <ignoreLiterals>true</ignoreLiterals>
+                            </configuration>
+                            <goals>
+                                <!-- 'cpd' goal is not configurable since it only checks the report -->
+                                <goal>cpd</goal>
+                                <goal>cpd-check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>com.lewisd</groupId>
+                    <artifactId>lint-maven-plugin</artifactId>
+                    <version>${lint-maven-plugin.version}</version>
+                    <configuration>
+                        <failOnViolation>true</failOnViolation>
+                        <onlyRunRules>
+                            <!-- Other rules either not applicable or don't work due to lack of maintenance anymore -->
+                            <rule>DotVersionProperty</rule>
+                            <rule>DuplicateDep</rule>
+                            <rule>ExecutionId</rule>
+                            <rule>RedundantDepVersion</rule>
+                            <rule>RedundantPluginVersion</rule>
+                            <rule>VersionProp</rule>
+                        </onlyRunRules>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>pom-lint-validation</id>
+                            <phase>validate</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.owasp</groupId>
+                    <artifactId>dependency-check-maven</artifactId>
+                    <version>${dependency-check-maven.version}</version>
+                    <configuration>
+                        <failBuildOnAnyVulnerability>true</failBuildOnAnyVulnerability>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>dependency-vulnerabilities-validation</id>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>${maven-enforcer-plugin.version}</version>
+                    <configuration>
+                        <rules>
+                            <requireReleaseDeps/>
+                            <banDuplicatePomDependencyVersions/>
+                            <banDuplicateClasses>
+                                <findAllDuplicates>true</findAllDuplicates>
+                            </banDuplicateClasses>
+                        </rules>
+                        <fail>true</fail>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>dependency-validation</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>enforce</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.codehaus.mojo</groupId>
+                            <artifactId>extra-enforcer-rules</artifactId>
+                            <version>${extra-enforcer-rules.version}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+                <plugin>
+                    <groupId>org.sonarsource.scanner.maven</groupId>
+                    <artifactId>sonar-maven-plugin</artifactId>
+                    <version>${sonar-maven-plugin.version}</version>
+                </plugin>
+
+                <!-- Plugin management used commonly with maven and in a maven lifecycle -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>${maven-clean-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>${maven-resources-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>${maven-source-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>${maven-jar-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jxr-plugin</artifactId>
+                    <version>${maven-jxr-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>${maven-javadoc-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>taglist-maven-plugin</artifactId>
+                    <version>${taglist-maven-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>pl.project13.maven</groupId>
+                    <artifactId>git-commit-id-plugin</artifactId>
+                    <version>${git-commit-id-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-install-plugin</artifactId>
+                    <version>${maven-install-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>${maven-deploy-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-release-plugin</artifactId>
+                    <version>${maven-release-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-dependency-plugin</artifactId>
+                    <version>${maven-dependency-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${maven-surefire-plugin.version}</version>
+                    <configuration>
+                        <!-- A hack allowing to skip only unit tests but run integration tests -->
+                        <skipTests>${skip.unit.tests}</skipTests>
+                        <excludes>
+                            <exclude>*.integration.*Test</exclude>
+                        </excludes>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-report-plugin</artifactId>
+                    <version>${maven-surefire-report-plugin.version}</version>
+                </plugin>
+                <!-- maven-failsafe is is executed only as part of quality profile in order not to delay other checks -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>${maven-failsafe-plugin.version}</version>
+                    <configuration>
+                        <skipTests>${skip.integration.tests}</skipTests>
+                        <includes>
+                            <include>*.integration.*Test</include>
+                        </includes>
+                        <!-- https://stackoverflow.com/questions/25750334/duplicate-bean-conflicts-during-integration-tests-multiple-merged-contexts-r?answertab=active#tab-top -->
+                        <classesDirectory>${project.build.outputDirectory}</classesDirectory>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <!-- Only runs tests but doesn't check if they're successful -->
+                            <id>integration-test-run</id>
+                            <goals>
+                                <goal>integration-test</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <!-- Only verifies that integration tests are successful but doesn't run them -->
+                            <id>integration-test-validation</id>
+                            <goals>
+                                <goal>verify</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-site-plugin</artifactId>
+                    <version>${maven-site-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-project-info-reports-plugin</artifactId>
+                    <version>${maven-project-info-reports-plugin.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>pl.project13.maven</groupId>
+                <artifactId>git-commit-id-plugin</artifactId>
+                <configuration>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                    <commitIdGenerationMode>full</commitIdGenerationMode>
+                    <!-- In order to perform CI checks the code is not cloned into doker containers but is just copied -->
+                    <failOnNoGitDirectory>false</failOnNoGitDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>collect-git-commit-id-info</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>jacoco-prepare-agent-for-unit-test</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <reporting>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jxr-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>taglist-maven-plugin</artifactId>
+                <configuration>
+                    <tagListOptions>
+                        <tagClasses>
+                            <tagClass>
+                                <displayName>TODO work</displayName>
+                                <tags>
+                                    <tag>
+                                        <matchString>TODO</matchString>
+                                        <matchType>ignoreCase</matchType>
+                                    </tag>
+                                </tags>
+                            </tagClass>
+                            <tagClass>
+                                <displayName>FIXME work</displayName>
+                                <tags>
+                                    <tag>
+                                        <matchString>FIXME</matchString>
+                                        <matchType>ignoreCase</matchType>
+                                    </tag>
+                                </tags>
+                            </tagClass>
+                        </tagClasses>
+                    </tagListOptions>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-report-plugin</artifactId>
+                <reportSets>
+                    <reportSet>
+                        <id>unit-tests</id>
+                        <reports>
+                            <report>report-only</report>
+                        </reports>
+                    </reportSet>
+                    <reportSet>
+                        <id>integration-tests</id>
+                        <reports>
+                            <report>failsafe-report-only</report>
+                        </reports>
+                    </reportSet>
+                </reportSets>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <reportSets>
+                    <reportSet>
+                        <id>unit-tests-coverage</id>
+                        <reports>
+                            <report>report</report>
+                        </reports>
+                    </reportSet>
+                </reportSets>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <reportSets>
+                    <reportSet>
+                        <reports>
+                            <report>checkstyle</report>
+                        </reports>
+                    </reportSet>
+                </reportSets>
+            </plugin>
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <reportSets>
+                    <reportSet>
+                        <reports>
+                            <report>aggregate</report>
+                        </reports>
+                    </reportSet>
+                </reportSets>
+            </plugin>
+        </plugins>
+    </reporting>
+
+    <profiles>
+        <profile>
+            <id>quality</id>
+            <build>
+                <plugins>
+                    <!-- Ensure that Javadoc for both tests and the code is valid by building it -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <!-- There is no way to only validate javadoc without generating it with maven plugin -->
+                        <executions>
+                            <execution>
+                                <id>generate-javadocs</id>
+                                <goals>
+                                    <goal>javadoc</goal>
+                                </goals>
+                                <phase>process-sources</phase>
+                            </execution>
+                            <execution>
+                                <id>generate-test-javadocs</id>
+                                <goals>
+                                    <goal>test-javadoc</goal>
+                                </goals>
+                                <phase>process-test-sources</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Ensure minimal code coverage of 80% for unit tests is met -->
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                    </plugin>
+
+                    <!-- Checkstyle that enforces modified style from Google with additional checks from Sun -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-checkstyle-plugin</artifactId>
+                    </plugin>
+
+                    <!-- Spotbugs maven plugin is doing static code analysis to catch common code problems -->
+                    <!-- Spotbugs is successor or FindBugs -->
+                    <plugin>
+                        <groupId>com.github.spotbugs</groupId>
+                        <artifactId>spotbugs-maven-plugin</artifactId>
+                    </plugin>
+
+                    <!-- PMD maven plugin is doing static code analysis to catch common code problems -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-pmd-plugin</artifactId>
+                    </plugin>
+
+                    <!-- The only plugin that enforces good code style for pom.xml files, not maintained for 6 years -->
+                    <plugin>
+                        <groupId>com.lewisd</groupId>
+                        <artifactId>lint-maven-plugin</artifactId>
+                    </plugin>
+
+                    <!-- Ensures that no dependencies with known vulnerabilities are used -->
+                    <plugin>
+                        <groupId>org.owasp</groupId>
+                        <artifactId>dependency-check-maven</artifactId>
+                    </plugin>
+
+                    <!-- Ensures that there are no duplicates in dependencies, classes and that all they're released -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-enforcer-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

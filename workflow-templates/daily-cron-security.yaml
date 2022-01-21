@@ -1,0 +1,36 @@
+name: Daily Cron Security Check
+on:
+  schedule:
+    - cron:  '0 0 * * *'  # every day at midnight
+
+jobs:
+  daily-checkmarx-security-check:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Extract branch name
+      shell: bash
+      run: echo "##[set-output name=branch;]${GITHUB_REF#refs/heads/}"
+      id: extract_branch
+
+    - name: Checkmarx CxFlow Action
+      uses: checkmarx-ts/checkmarx-cxflow-github-action@v1.1
+      with:
+        project: ${{ ADD Project Name }} # ADD Project Name
+        team: ${{ ADD Project Name }} # ADD Project Name
+        checkmarx_url: ${{ secrets.CHECKMARX_URL }}
+        checkmarx_username: ${{ secrets.CHECKMARX_USERNAME }}
+        checkmarx_password: ${{ secrets.CHECKMARX_PASSWORD }}
+        checkmarx_client_secret: ${{ secrets.cHECKMARX_CLIENT_SECRET }}
+        break_build: false
+        incremental: false
+        scanners: sast
+        # Used for Jira integration
+        params: --namespace=${{ github.repository_owner }} --repo-name=${{ github.event.repository.name }} --branch=${{ github.ref }} --exclude-folders=test_automation
+
+    - name: Print branch name
+      run: |
+        echo branch_name:${{ steps.extract_branch.outputs.branch }}
+        echo $GITHUB_SHA

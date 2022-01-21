@@ -1,0 +1,8 @@
+{
+    "name": "Vertex Inc Workflow",
+    "description": "Vertex Inc PR CI Checks workflow template.",
+    "iconName": "example-icon",
+    "categories": [
+        "Java"
+    ]
+}

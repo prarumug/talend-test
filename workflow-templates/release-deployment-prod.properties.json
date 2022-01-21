@@ -1,0 +1,8 @@
+{
+    "name": "Vertex Inc Workflow",
+    "description": "Vertex Inc release deployment workflow template.",
+    "iconName": "example-icon",
+    "categories": [
+        "Java"
+    ]
+}
