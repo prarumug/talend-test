@@ -13,3 +13,4 @@ cd .github folder then remove .git dir
  Only retrieve *.yaml files, (currently it is set for java project but same template should be user for other C# or Node project)
 
  *.properties.json can be removed
+## Test
